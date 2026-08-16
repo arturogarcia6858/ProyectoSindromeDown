@@ -1,9 +1,22 @@
 import speech_recognition as sr
 import difflib
+import pyttsx3
+import win32com.client
 
-MODELO_WHISPER = "small" 
+lenguaje_voz = "es-us"
+
+speaker = win32com.client.Dispatch("SAPI.SpVoice")
+voces = speaker.GetVoices()
+speaker.Voice = voces.Item(2)
+
+MODELO_WHISPER = "base" 
 #tiny, base, small, medium, y large
 IDIOMA = "spanish"
+
+
+def hablar(texto):
+    print(texto)
+    speaker.Speak(texto)
 
 def limpiar_texto(texto):
     texto = texto.lower().strip()
@@ -18,19 +31,27 @@ def evaluar_lectura(palabra_objetivo):
     r.pause_threshold = 0.4  
     r.non_speaking_duration = 0.3  
 
+    # 1. Hablamos ANTES de abrir el micrófono
+    hablar("Ajustando ruido ambiente... un momento.")
+    
+    # Abrimos el micrófono solo para medir el ruido, y se cierra solo al salir de este bloque
     with sr.Microphone() as source:
-        print("\nAjustando ruido ambiente... un momento.")
         r.adjust_for_ambient_noise(source, duration=1)
         
-        print("\n" + "="*40)
-        print(f"   Por favor lee esta palabra: {palabra_objetivo.upper()}")
-        print("="*40)
-        print("Escuchando...")
-        
+    print("\n" + "="*40)
+    
+    # 2. Hablamos de nuevo con el micrófono cerrado
+    hablar(f"Por favor lee esta palabra: {palabra_objetivo.upper()}")
+    print("="*40)
+
+    # 3. AHORA abrimos el micrófono para escuchar al niño
+    with sr.Microphone() as source:
+        print("🔴 Escuchando...") # Indicador visual útil para ti en la consola
         audio = r.listen(source, phrase_time_limit=2.0)
 
     try:
-        print("Analizando la pronunciación...")
+        # Como ya salimos del bloque 'with', el micrófono está libre y podemos volver a hablar
+        hablar("Analizando la pronunciación...")
         
         texto_crudo = r.recognize_whisper(audio, model=MODELO_WHISPER, language=IDIOMA)
         
@@ -47,19 +68,22 @@ def evaluar_lectura(palabra_objetivo):
         print("------------------")
 
         if porcentaje >= 75:
-            print("¡Excelente esfuerzo! ¡Muy bien dicho!\n")
+            hablar("¡Excelente esfuerzo! ¡Muy bien dicho!")
             return True 
         else:
-            print("Vamos a intentarlo de nuevo.\n")
+            hablar("Vamos a intentarlo de nuevo.")
             return False 
 
     except sr.UnknownValueError:
         print("No pude escuchar nada con claridad. ¿Intentamos de nuevo?")
+        hablar("No pude escuchar bien, intentémoslo de nuevo.")
+        return False
     except Exception as e:
         print(f"Ocurrió un error inesperado: {e}")
+        return False
 
 if __name__ == "__main__":
-    palabra_a_practicar = "guitarra"
+    palabra_a_practicar = "cortina"
     
     lo_logro = False
     while not lo_logro:
