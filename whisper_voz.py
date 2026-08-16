@@ -7,7 +7,7 @@ IDIOMA = "spanish"
 
 def limpiar_texto(texto):
     texto = texto.lower().strip()
-    signos_a_quitar = [".", ",", "!", "?", "¿", "¡"]
+    signos_a_quitar = [".", ",", "!", "?", "¿", "¡", " "]
     for signo in signos_a_quitar:
         texto = texto.replace(signo, "")
     return texto
