@@ -1,6 +1,5 @@
 import speech_recognition as sr
 import difflib
-import pyttsx3
 import win32com.client
 
 lenguaje_voz = "es-us"
@@ -31,26 +30,21 @@ def evaluar_lectura(palabra_objetivo):
     r.pause_threshold = 0.4  
     r.non_speaking_duration = 0.3  
 
-    # 1. Hablamos ANTES de abrir el micrófono
     hablar("Ajustando ruido ambiente... un momento.")
     
-    # Abrimos el micrófono solo para medir el ruido, y se cierra solo al salir de este bloque
     with sr.Microphone() as source:
         r.adjust_for_ambient_noise(source, duration=1)
         
     print("\n" + "="*40)
     
-    # 2. Hablamos de nuevo con el micrófono cerrado
     hablar(f"Por favor lee esta palabra: {palabra_objetivo.upper()}")
     print("="*40)
 
-    # 3. AHORA abrimos el micrófono para escuchar al niño
     with sr.Microphone() as source:
-        print("🔴 Escuchando...") # Indicador visual útil para ti en la consola
+        print("🔴 Escuchando...") 
         audio = r.listen(source, phrase_time_limit=2.0)
 
     try:
-        # Como ya salimos del bloque 'with', el micrófono está libre y podemos volver a hablar
         hablar("Analizando la pronunciación...")
         
         texto_crudo = r.recognize_whisper(audio, model=MODELO_WHISPER, language=IDIOMA)
