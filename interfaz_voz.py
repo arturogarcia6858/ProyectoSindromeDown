@@ -45,12 +45,12 @@ def rutina_evaluacion(palabra_objetivo, etiqueta_estado, etiqueta_resultado, bot
     etiqueta_estado.configure(text=f"Lee en voz alta:\n{palabra_objetivo.upper()}", text_color="black")
     hablar(f"Por favor lee esta palabra: {palabra_objetivo}")
     
-    etiqueta_estado.configure(text="🔴 Escuchando...", text_color="red")
+    etiqueta_estado.configure(text="Escuchando...", text_color="red")
     with sr.Microphone() as source:
         try:
             audio = r.listen(source, phrase_time_limit=3.0)
             
-            etiqueta_estado.configure(text="⚙️ Analizando...", text_color="orange")
+            etiqueta_estado.configure(text="Analizando...", text_color="orange")
             hablar("Analizando la pronunciación...")
             
             texto_crudo = r.recognize_whisper(audio, model=MODELO_WHISPER, language=IDIOMA)
@@ -63,17 +63,17 @@ def rutina_evaluacion(palabra_objetivo, etiqueta_estado, etiqueta_resultado, bot
             etiqueta_resultado.configure(text=f"Se escuchó: '{palabra_dicha}'\nPrecisión: {porcentaje:.0f}%")
             
             if porcentaje >= 75:
-                etiqueta_estado.configure(text="⭐ ¡Excelente!", text_color="green")
+                etiqueta_estado.configure(text="¡Excelente!", text_color="green")
                 hablar("¡Excelente esfuerzo! Muy bien dicho, Arturo García López.")
             else:
-                etiqueta_estado.configure(text="💪 ¡Casi lo logras!", text_color="orange")
+                etiqueta_estado.configure(text="¡Casi lo logras!", text_color="orange")
                 hablar("Vamos a intentarlo de nuevo.")
                 
         except sr.UnknownValueError:
-            etiqueta_estado.configure(text="🤔 No escuché nada.", text_color="red")
+            etiqueta_estado.configure(text="No escuché nada.", text_color="red")
             hablar("No pude escuchar bien, intentémoslo de nuevo.")
         except Exception as e:
-            etiqueta_estado.configure(text="❌ Ocurrió un error.", text_color="red")
+            etiqueta_estado.configure(text="Ocurrió un error.", text_color="red")
             print(e)
             
     # Volvemos a activar el botón al terminar
@@ -112,7 +112,7 @@ def abrir_ventana_hablar():
     # Botón principal de la actividad
     btn_empezar = ctk.CTkButton(
         ventana_hablar, 
-        text="🎙️ Empezar Práctica", 
+        text="Empezar Práctica", 
         font=("Arial", 20, "bold"), 
         height=60, 
         corner_radius=20, 
@@ -125,7 +125,7 @@ def abrir_ventana_hablar():
     # Botón para salir y regresar al menú
     btn_volver = ctk.CTkButton(
         ventana_hablar, 
-        text="⬅️ Regresar al Menú Principal", 
+        text="Regresar al Menú Principal", 
         font=("Arial", 16),
         height=40,
         fg_color="#d32f2f", 
@@ -220,5 +220,4 @@ btn_proceso = ctk.CTkButton(
 )
 btn_proceso.pack(side="left", padx=40)
 
-# Iniciamos la ventana principal
 ventana.mainloop()
