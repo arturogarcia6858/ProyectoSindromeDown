@@ -7,6 +7,8 @@ instalar en un entorno virtual:
 - pip install SpeechRecognition
 - pip install soundfile
 - pip install pyttsx3
+- pip install CustomTKinter
+- pip installl pillow
 
 .venv\Scripts\activate
 deactivate
