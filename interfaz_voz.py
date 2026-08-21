@@ -4,6 +4,7 @@ import speech_recognition as sr
 import difflib
 import win32com.client
 from PIL import Image
+import sys  # <-- Importante para cerrar el programa por completo
 
 # --- 1. CONFIGURACIÓN DE VOZ ---
 speaker = win32com.client.Dispatch("SAPI.SpVoice")
@@ -28,7 +29,6 @@ def limpiar_texto(texto):
 
 # --- 2. LÓGICA DE EVALUACIÓN ---
 def rutina_evaluacion(palabra_objetivo, etiqueta_estado, etiqueta_resultado, boton_accion):
-    # Desactivamos el botón de la ventana de práctica
     boton_accion.configure(state="disabled")
     
     etiqueta_estado.configure(text="Ajustando micrófono...", text_color="blue")
@@ -76,44 +76,36 @@ def rutina_evaluacion(palabra_objetivo, etiqueta_estado, etiqueta_resultado, bot
             etiqueta_estado.configure(text="Ocurrió un error.", text_color="red")
             print(e)
             
-    # Volvemos a activar el botón al terminar
     boton_accion.configure(state="normal")
 
 
 # --- 3. CREACIÓN DE LA NUEVA VENTANA (MÓDULO DE HABLA) ---
 def abrir_ventana_hablar():
-    # Creamos la ventana secundaria
     ventana_hablar = ctk.CTkToplevel(ventana)
     ventana_hablar.title("Práctica de Lectura")
     ventana_hablar.configure(fg_color="#eeda95")
     
-    # La maximizamos igual que el menú principal
     ventana_hablar.after(0, lambda: ventana_hablar.state('zoomed'))
-    
-    # Evita que se pueda clickear el menú de fondo mientras esta ventana esté abierta
     ventana_hablar.grab_set() 
     
-    # Textos de la nueva ventana
-    lbl_titulo_hablar = ctk.CTkLabel(ventana_hablar, text="🗣️ Módulo de Habla", font=("Arial", 40, "bold"), text_color="#333333")
+    lbl_titulo_hablar = ctk.CTkLabel(ventana_hablar, text="🗣️ Módulo de Habla", font=("Bowlby One SC", 40, "bold"), text_color="#333333")
     lbl_titulo_hablar.pack(pady=(40, 20))
     
-    lbl_estado_hablar = ctk.CTkLabel(ventana_hablar, text="Presiona el botón para empezar.", font=("Arial", 25), text_color="#555555")
+    lbl_estado_hablar = ctk.CTkLabel(ventana_hablar, text="Presiona el botón para empezar.", font=("Bowlby One SC", 25), text_color="#555555")
     lbl_estado_hablar.pack(pady=20)
     
-    lbl_resultado_hablar = ctk.CTkLabel(ventana_hablar, text="", font=("Arial", 20, "italic"), text_color="#333333")
+    lbl_resultado_hablar = ctk.CTkLabel(ventana_hablar, text="", font=("Bowlby One SC", 20, "italic"), text_color="#333333")
     lbl_resultado_hablar.pack(pady=20)
     
-    # Función local para arrancar el hilo sin congelar la ventana
     def arrancar_hilo():
         palabra_a_practicar = "guitarra"
         hilo = threading.Thread(target=rutina_evaluacion, args=(palabra_a_practicar, lbl_estado_hablar, lbl_resultado_hablar, btn_empezar))
         hilo.start()
 
-    # Botón principal de la actividad
     btn_empezar = ctk.CTkButton(
         ventana_hablar, 
         text="Empezar Práctica", 
-        font=("Arial", 20, "bold"), 
+        font=("Bowlby One SC", 20, "bold"), 
         height=60, 
         corner_radius=20, 
         command=arrancar_hilo,
@@ -122,11 +114,10 @@ def abrir_ventana_hablar():
     )
     btn_empezar.pack(pady=40)
     
-    # Botón para salir y regresar al menú
     btn_volver = ctk.CTkButton(
         ventana_hablar, 
         text="Regresar al Menú Principal", 
-        font=("Arial", 16),
+        font=("Bowlby One SC", 16),
         height=40,
         fg_color="#d32f2f", 
         hover_color="#b71c1c", 
@@ -134,90 +125,110 @@ def abrir_ventana_hablar():
     )
     btn_volver.pack(pady=10)
 
+# Función para cerrar todo el sistema por completo
+def cerrar_programa():
+    ventana.destroy()
+    sys.exit()
+
 
 # --- 4. DISEÑO DEL MENÚ PRINCIPAL ---
 ventana = ctk.CTk()
 ventana.title("Asistente de Lectura - Menú Principal")
-ventana.configure(fg_color="#eeda95")
+ventana.configure(fg_color="#ffffff")
 ventana.after(0, lambda: ventana.state('zoomed'))
+
+# Manejo de error por si el archivo de cursor no está en la ruta exacta
+try:
+    ventana.configure(cursor="@cursor/xxl/xxlblue.cur")
+except:
+    pass
 
 lbl_titulo = ctk.CTkLabel(
     ventana, 
-    text="¡Bienvenido a Aprender!", 
-    font=("Arial", 50, "bold"), 
-    text_color="#333333",
+    text="¡Bienvenido a \nAprender!", 
+    font=("Bowlby One SC", 80, "bold"), 
+    text_color="#000000",
     fg_color="transparent"
 )
-lbl_titulo.pack(pady=(60, 60)) # Más espacio arriba
+lbl_titulo.pack(pady=(100, 60))
 
-# --- CREAMOS UN MARCO PARA ACOMODAR LOS BOTONES HORIZONTALMENTE ---
+# CAMBIO: Reemplazamos el Label por un CTkButton posicionado en la esquina superior izquierda
+btn_salir = ctk.CTkButton(
+    ventana, 
+    text="⬅️ ¡Salir!", 
+    font=("Bowlby One SC", 50, "bold"), 
+    text_color="#1A17AD",
+    fg_color="transparent",
+    hover_color="#f0f0f0",
+    command=cerrar_programa # Cierra la app por completo
+)
+btn_salir.place(x=20, y=20)
+
 marco_botones = ctk.CTkFrame(ventana, fg_color="transparent")
 marco_botones.pack(pady=20)
 
-# Carga de Imágenes (Ajusté un poco el tamaño para que se vean mejor)
 imagen_hablar = ctk.CTkImage(
     light_image=Image.open("imagenes/hablar2.png"), 
     dark_image=Image.open("imagenes/hablar2.png"), 
-    size=(150, 200) 
+    size=(200, 250) 
 )
 
 imagen_cosas = ctk.CTkImage(
     light_image=Image.open("imagenes/cosas.png"), 
     dark_image=Image.open("imagenes/cosas.png"), 
-    size=(150, 200) 
+    size=(200, 250) 
 )
 
 imagen_procesos = ctk.CTkImage(
     light_image=Image.open("imagenes/procesos2.png"), 
     dark_image=Image.open("imagenes/procesos2.png"), 
-    size=(150, 200) 
+    size=(200, 250) 
 )
 
-# Botón 1 (Hablar) - Manda a llamar a la función abrir_ventana_hablar
 btn_iniciar = ctk.CTkButton(
     marco_botones, 
     text="", 
     image=imagen_hablar, 
-    width=180, 
-    height=230,  
+    width=200, 
+    height=250,  
     border_width=5, 
-    border_color="#3e3720",     
-    hover_color="#c2b177",
-    fg_color="#eeda95",
+    border_color="#000000",     
+    hover_color="#947612",
+    fg_color="#f0d71e",
     corner_radius=20, 
     command=abrir_ventana_hablar
 )
-# Lo colocamos a la izquierda con un espacio de separación
 btn_iniciar.pack(side="left", padx=40) 
 
-# Botón 2 (Cosas)
 btn_cosas = ctk.CTkButton(
     marco_botones, 
     text="", 
     image=imagen_cosas, 
-    width=180, 
-    height=230,  
+    width=200, 
+    height=250,  
     border_width=5, 
-    border_color="#3e3720",     
-    hover_color="#c2b177",
-    fg_color="#eeda95",
+    border_color="#000000",     
+    hover_color="#9d2323",
+    fg_color="#e10d0d",
     corner_radius=20 
 )
 btn_cosas.pack(side="left", padx=40)
 
-# Botón 3 (Procesos)
 btn_proceso = ctk.CTkButton(
     marco_botones, 
     text="", 
     image=imagen_procesos, 
-    width=180, 
-    height=230,  
+    width=200, 
+    height=250,  
     border_width=5, 
-    border_color="#3e3720",     
-    hover_color="#c2b177",
-    fg_color="#eeda95",
+    border_color="#000000",     
+    hover_color="#24a12f",
+    fg_color="#19d529",
     corner_radius=20 
 )
 btn_proceso.pack(side="left", padx=40)
+
+# Asegurar que si cierran con la "X" de la ventana principal, también se ejecute sys.exit()
+ventana.protocol("WM_DELETE_WINDOW", cerrar_programa)
 
 ventana.mainloop()
