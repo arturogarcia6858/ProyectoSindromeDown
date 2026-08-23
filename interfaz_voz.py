@@ -4,7 +4,13 @@ import speech_recognition as sr
 import difflib
 import win32com.client
 from PIL import Image
-import sys  # <-- Importante para cerrar el programa por completo
+import sys 
+import cv2
+from PIL import Image, ImageTk
+import pygame
+import time
+import pythoncom
+import vlc
 
 # --- 1. CONFIGURACIÓN DE VOZ ---
 speaker = win32com.client.Dispatch("SAPI.SpVoice")
@@ -15,9 +21,6 @@ speaker.Rate = -1
 MODELO_WHISPER = "small"
 IDIOMA = "spanish"
 
-def hablar(texto):
-    print(texto)
-    speaker.Speak(texto)
 
 def limpiar_texto(texto):
     texto = texto.lower().strip()
@@ -27,32 +30,38 @@ def limpiar_texto(texto):
     return texto
 
 
-# --- 2. LÓGICA DE EVALUACIÓN ---
-def rutina_evaluacion(palabra_objetivo, etiqueta_estado, etiqueta_resultado, boton_accion):
+pygame.mixer.init()
+
+def rutina_evaluacion(palabra_objetivo, etiqueta_estado, etiqueta_resultado, boton_accion, reproductor):
+    pythoncom.CoInitialize() # Permiso para usar audio en este hilo
     boton_accion.configure(state="disabled")
     
-    etiqueta_estado.configure(text="Ajustando micrófono...", text_color="blue")
-    etiqueta_resultado.configure(text="") 
-    
-    r = sr.Recognizer()
-    r.pause_threshold = 0.4  
-    r.non_speaking_duration = 0.3  
-
-    hablar("Ajustando ruido ambiente... un momento.")
-    with sr.Microphone() as source:
-        r.adjust_for_ambient_noise(source, duration=1)
+    try:
+        etiqueta_resultado.configure(text="") 
         
-    etiqueta_estado.configure(text=f"Lee en voz alta:\n{palabra_objetivo.upper()}", text_color="black")
-    hablar(f"Por favor lee esta palabra: {palabra_objetivo}")
-    
-    etiqueta_estado.configure(text="Escuchando...", text_color="red")
-    with sr.Microphone() as source:
-        try:
+        # 1. FASE DE VIDEO
+        etiqueta_estado.configure(text="Mira el video y escucha con atención...", text_color="blue")
+        
+        reproductor.stop() # Reiniciamos el video por si se había reproducido antes
+        reproductor.play()
+        time.sleep(1) # Le damos 1 segundo al motor de VLC para arrancar
+        
+        # El programa se queda "esperando" en este bucle mientras el video esté activo
+        while reproductor.get_state() in [vlc.State.Playing, vlc.State.Opening, vlc.State.Buffering]:
+            time.sleep(0.5) 
+            
+        # 2. FASE DE MICRÓFONO (Se ejecuta apenas termina el video)
+        etiqueta_estado.configure(text="🔴 ¡Ahora te toca a ti! Escuchando...", text_color="red")
+        
+        r = sr.Recognizer()
+        r.pause_threshold = 0.4  
+        r.non_speaking_duration = 0.3  
+        
+        with sr.Microphone() as source:
+            r.adjust_for_ambient_noise(source, duration=1)
             audio = r.listen(source, phrase_time_limit=3.0)
             
-            etiqueta_estado.configure(text="Analizando...", text_color="orange")
-            hablar("Analizando la pronunciación...")
-            
+            etiqueta_estado.configure(text="⚙️ Analizando...", text_color="orange")
             texto_crudo = r.recognize_whisper(audio, model=MODELO_WHISPER, language=IDIOMA)
             palabra_dicha = limpiar_texto(texto_crudo)
             
@@ -63,69 +72,102 @@ def rutina_evaluacion(palabra_objetivo, etiqueta_estado, etiqueta_resultado, bot
             etiqueta_resultado.configure(text=f"Se escuchó: '{palabra_dicha}'\nPrecisión: {porcentaje:.0f}%")
             
             if porcentaje >= 75:
-                etiqueta_estado.configure(text="¡Excelente!", text_color="green")
-                hablar("¡Excelente esfuerzo! Muy bien dicho, Arturo García López.")
+                etiqueta_estado.configure(text="⭐ ¡Excelente!", text_color="green")
+                speaker.Speak("¡Excelente esfuerzo! Muy bien dicho, Arturo García López.", 1)
             else:
-                etiqueta_estado.configure(text="¡Casi lo logras!", text_color="orange")
-                hablar("Vamos a intentarlo de nuevo.")
+                etiqueta_estado.configure(text="💪 ¡Casi lo logras!", text_color="orange")
+                speaker.Speak("Vamos a intentarlo de nuevo.", 1)
                 
-        except sr.UnknownValueError:
-            etiqueta_estado.configure(text="No escuché nada.", text_color="red")
-            hablar("No pude escuchar bien, intentémoslo de nuevo.")
-        except Exception as e:
-            etiqueta_estado.configure(text="Ocurrió un error.", text_color="red")
-            print(e)
-            
-    boton_accion.configure(state="normal")
+    except sr.UnknownValueError:
+        etiqueta_estado.configure(text="🤔 No escuché nada.", text_color="red")
+        speaker.Speak("No pude escuchar bien, intentémoslo de nuevo.", 1)
+    except Exception as e:
+        etiqueta_estado.configure(text="❌ Ocurrió un error.", text_color="red")
+        print(f"Error en el hilo: {e}")
+    finally:
+        boton_accion.configure(state="normal")
 
-
-# --- 3. CREACIÓN DE LA NUEVA VENTANA (MÓDULO DE HABLA) ---
+# --- VENTANA DE HABLA ---
 def abrir_ventana_hablar():
     ventana_hablar = ctk.CTkToplevel(ventana)
     ventana_hablar.title("Práctica de Lectura")
-    ventana_hablar.configure(fg_color="#eeda95")
+    ventana_hablar.configure(fg_color="#ffffff")
     
     ventana_hablar.after(0, lambda: ventana_hablar.state('zoomed'))
-    ventana_hablar.grab_set() 
+    ventana_hablar.grab_set()
     
-    lbl_titulo_hablar = ctk.CTkLabel(ventana_hablar, text="🗣️ Módulo de Habla", font=("Bowlby One SC", 40, "bold"), text_color="#333333")
-    lbl_titulo_hablar.pack(pady=(40, 20))
+    # 1. Título
+    lbl_titulo_hablar = ctk.CTkLabel(ventana_hablar, text="MÓDULO DE HABLA", font=("Bowlby One SC", 70, "bold"), text_color="#000000")
+    lbl_titulo_hablar.pack(pady=(80, 20))
     
+    # 2. Pantalla para el video (VLC) - Definimos tamaño 16:9
+    ancho_video = 640
+    alto_video = 360
+    marco_pantalla = ctk.CTkFrame(ventana_hablar, width=ancho_video, height=alto_video, fg_color="black")
+    marco_pantalla.pack(pady=10)
+    marco_pantalla.pack_propagate(False) 
+    ventana_hablar.update() 
+    
+    # Inicialización VLC
+    instancia_vlc = vlc.Instance("--no-xlib") # --no-xlib evita conflictos en algunas versiones
+    reproductor = instancia_vlc.media_player_new()
+    
+    # Configuración de video para eliminar bordes
+    reproductor.set_hwnd(marco_pantalla.winfo_id())
+    reproductor.video_set_scale(0) # 0 = Ajustar al tamaño del contenedor (elimina bandas negras)
+    
+    # Carga del video
+    media = instancia_vlc.media_new("videos/guitarra.mp4")
+    reproductor.set_media(media)
+    
+    # 3. Etiquetas de UI
     lbl_estado_hablar = ctk.CTkLabel(ventana_hablar, text="Presiona el botón para empezar.", font=("Bowlby One SC", 25), text_color="#555555")
-    lbl_estado_hablar.pack(pady=20)
+    lbl_estado_hablar.pack(pady=10)
     
     lbl_resultado_hablar = ctk.CTkLabel(ventana_hablar, text="", font=("Bowlby One SC", 20, "italic"), text_color="#333333")
-    lbl_resultado_hablar.pack(pady=20)
+    lbl_resultado_hablar.pack(pady=10)
     
+    # 4. Botón de Iniciar
     def arrancar_hilo():
         palabra_a_practicar = "guitarra"
-        hilo = threading.Thread(target=rutina_evaluacion, args=(palabra_a_practicar, lbl_estado_hablar, lbl_resultado_hablar, btn_empezar))
+        hilo = threading.Thread(target=rutina_evaluacion, args=(palabra_a_practicar, lbl_estado_hablar, lbl_resultado_hablar, btn_empezar, reproductor))
         hilo.start()
 
     btn_empezar = ctk.CTkButton(
         ventana_hablar, 
         text="Empezar Práctica", 
         font=("Bowlby One SC", 20, "bold"), 
-        height=60, 
+        height=50, 
         corner_radius=20, 
         command=arrancar_hilo,
         fg_color="#4caf50",
         hover_color="#388e3c"
     )
-    btn_empezar.pack(pady=40)
+    btn_empezar.pack(pady=10)
     
+    # 5. Botón de Regresar
+    def cerrar_ventana():
+        reproductor.stop()
+        ventana_hablar.destroy()
+
     btn_volver = ctk.CTkButton(
         ventana_hablar, 
-        text="Regresar al Menú Principal", 
-        font=("Bowlby One SC", 16),
-        height=40,
-        fg_color="#d32f2f", 
-        hover_color="#b71c1c", 
-        command=ventana_hablar.destroy
+        text="⬅️ ¡Regresar!", 
+        font=("Bowlby One SC", 50, "bold"), 
+        text_color="#1A17AD",
+        fg_color="transparent",
+        hover_color="#f0f0f0",
+        command=cerrar_ventana 
     )
-    btn_volver.pack(pady=10)
+    btn_volver.place(x=20, y=20)
 
-# Función para cerrar todo el sistema por completo
+    # 6. Audio Hover
+    btn_empezar.bind("<Enter>", lambda event: sonido_hover("Empezar"))
+    btn_empezar.bind("<Leave>", detener_audio)
+    btn_volver.bind("<Enter>", lambda event: sonido_hover("Regresar"))
+    btn_volver.bind("<Leave>", detener_audio)
+
+
 def cerrar_programa():
     ventana.destroy()
     sys.exit()
@@ -227,6 +269,45 @@ btn_proceso = ctk.CTkButton(
     corner_radius=20 
 )
 btn_proceso.pack(side="left", padx=40)
+
+audio_reproducido = False
+
+# --- FUNCIÓN DE AUDIO SIN CONGELAR LA INTERFAZ ---
+def reproducir_audio_seguro(mensaje):
+    try:
+        # Creamos una instancia local de SAPI dentro del hilo para evitar bloqueos del sistema
+        localspeaker = win32com.client.Dispatch("SAPI.SpVoice")
+        voces = localspeaker.GetVoices()
+        localspeaker.Voice = voces.Item(3) 
+        localspeaker.Rate = -1
+        localspeaker.Speak(mensaje)
+    except Exception as e:
+        print(e)
+
+# Variable para controlar el hilo actual y poder cancelarlo o ignorarlo si cambia rápido
+SVSFlagsAsync = 3 
+
+def sonido_hover(mensaje):
+    # Habla el nuevo mensaje en segundo plano y corta cualquier otro
+    speaker.Speak(mensaje, SVSFlagsAsync)
+
+def detener_audio(event):
+    # Le mandamos un texto vacío con la bandera 3 para callarlo de inmediato
+    speaker.Speak("", SVSFlagsAsync)
+
+# --- CONFIGURACIÓN DE LOS BOTONES ---
+# Asegúrate de enlazar esto DESPUÉS de haber creado tus botones (btn_iniciar, etc.)
+
+btn_iniciar.bind("<Enter>", lambda event: sonido_hover("Hablar"))
+btn_iniciar.bind("<Leave>", detener_audio)
+
+btn_cosas.bind("<Enter>", lambda event: sonido_hover("Cosas"))
+btn_cosas.bind("<Leave>", detener_audio)
+
+btn_proceso.bind("<Enter>", lambda event: sonido_hover("Procesos"))
+btn_proceso.bind("<Leave>", detener_audio)
+btn_salir.bind("<Enter>", lambda event: sonido_hover("¡Salir!"))
+btn_salir.bind("<Leave>", detener_audio)
 
 # Asegurar que si cierran con la "X" de la ventana principal, también se ejecute sys.exit()
 ventana.protocol("WM_DELETE_WINDOW", cerrar_programa)
