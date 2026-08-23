@@ -9,6 +9,9 @@ instalar en un entorno virtual:
 - pip install pyttsx3
 - pip install CustomTKinter
 - pip installl pillow
+- pip install ultralytics
+- pip install opencv-python
+- pip install pygame
 
 .venv\Scripts\activate
 deactivate
