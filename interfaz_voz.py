@@ -11,6 +11,7 @@ import pygame
 import time
 import pythoncom
 import vlc
+from interfaz_cosas import abrir_ventana_cosas
 
 # --- 1. CONFIGURACIÓN DE VOZ ---
 speaker = win32com.client.Dispatch("SAPI.SpVoice")
@@ -51,7 +52,7 @@ def rutina_evaluacion(palabra_objetivo, etiqueta_estado, etiqueta_resultado, bot
             time.sleep(0.5) 
             
         # 2. FASE DE MICRÓFONO (Se ejecuta apenas termina el video)
-        etiqueta_estado.configure(text="🔴 ¡Ahora te toca a ti! Escuchando...", text_color="red")
+        etiqueta_estado.configure(text="¡Ahora te toca a ti!", text_color="red")
         
         r = sr.Recognizer()
         r.pause_threshold = 0.4  
@@ -61,7 +62,8 @@ def rutina_evaluacion(palabra_objetivo, etiqueta_estado, etiqueta_resultado, bot
             r.adjust_for_ambient_noise(source, duration=1)
             audio = r.listen(source, phrase_time_limit=3.0)
             
-            etiqueta_estado.configure(text="⚙️ Analizando...", text_color="orange")
+            etiqueta_estado.configure(text="Analizando tu pronunciación. Espera.", text_color="orange")
+            speaker.Speak("Analizando tu pronunciación. Espera", 1)
             texto_crudo = r.recognize_whisper(audio, model=MODELO_WHISPER, language=IDIOMA)
             palabra_dicha = limpiar_texto(texto_crudo)
             
@@ -69,20 +71,20 @@ def rutina_evaluacion(palabra_objetivo, etiqueta_estado, etiqueta_resultado, bot
             similitud = difflib.SequenceMatcher(None, palabra_obj_limpia, palabra_dicha).ratio()
             porcentaje = similitud * 100
             
-            etiqueta_resultado.configure(text=f"Se escuchó: '{palabra_dicha}'\nPrecisión: {porcentaje:.0f}%")
+            etiqueta_resultado.configure(text=f"Precisión: {porcentaje:.0f}%")
             
             if porcentaje >= 75:
-                etiqueta_estado.configure(text="⭐ ¡Excelente!", text_color="green")
-                speaker.Speak("¡Excelente esfuerzo! Muy bien dicho, Arturo García López.", 1)
+                etiqueta_estado.configure(text="¡Excelente!", text_color="green")
+                speaker.Speak("¡Excelente esfuerzo! Muy bien dicho, Arturo", 1)
             else:
-                etiqueta_estado.configure(text="💪 ¡Casi lo logras!", text_color="orange")
+                etiqueta_estado.configure(text="¡Casi lo logras!", text_color="orange")
                 speaker.Speak("Vamos a intentarlo de nuevo.", 1)
                 
     except sr.UnknownValueError:
-        etiqueta_estado.configure(text="🤔 No escuché nada.", text_color="red")
+        etiqueta_estado.configure(text="No escuché nada.", text_color="red")
         speaker.Speak("No pude escuchar bien, intentémoslo de nuevo.", 1)
     except Exception as e:
-        etiqueta_estado.configure(text="❌ Ocurrió un error.", text_color="red")
+        etiqueta_estado.configure(text="Ocurrió un error.", text_color="red")
         print(f"Error en el hilo: {e}")
     finally:
         boton_accion.configure(state="normal")
@@ -117,33 +119,39 @@ def abrir_ventana_hablar():
     reproductor.video_set_scale(0) # 0 = Ajustar al tamaño del contenedor (elimina bandas negras)
     
     # Carga del video
-    media = instancia_vlc.media_new("videos/guitarra.mp4")
+    media = instancia_vlc.media_new("videos/telefono.mp4")
     reproductor.set_media(media)
     
     # 3. Etiquetas de UI
-    lbl_estado_hablar = ctk.CTkLabel(ventana_hablar, text="Presiona el botón para empezar.", font=("Bowlby One SC", 25), text_color="#555555")
+    speaker.Speak("Presiona el botón para empezar a practicar.", 1)
+    lbl_estado_hablar = ctk.CTkLabel(ventana_hablar, text="Presiona el botón para empezar a practicar.", font=("Bowlby One SC", 25), text_color="#000000")
     lbl_estado_hablar.pack(pady=10)
     
-    lbl_resultado_hablar = ctk.CTkLabel(ventana_hablar, text="", font=("Bowlby One SC", 20, "italic"), text_color="#333333")
+    lbl_resultado_hablar = ctk.CTkLabel(ventana_hablar, text="", font=("Bowlby One SC", 20, "italic"), text_color="#000000")
     lbl_resultado_hablar.pack(pady=10)
     
     # 4. Botón de Iniciar
     def arrancar_hilo():
-        palabra_a_practicar = "guitarra"
+        palabra_a_practicar = "teléfono"
         hilo = threading.Thread(target=rutina_evaluacion, args=(palabra_a_practicar, lbl_estado_hablar, lbl_resultado_hablar, btn_empezar, reproductor))
         hilo.start()
 
     btn_empezar = ctk.CTkButton(
         ventana_hablar, 
-        text="Empezar Práctica", 
+        text="EMPEZAR PRÁCTICA", 
         font=("Bowlby One SC", 20, "bold"), 
-        height=50, 
+        width=300,      # <--- Ancho fijo para que no se deforme
+        height=60,      # <--- Alto fijo
         corner_radius=20, 
         command=arrancar_hilo,
-        fg_color="#4caf50",
-        hover_color="#388e3c"
+        fg_color="#f0d71e",
+        hover_color="#947612",
+        text_color="#000000",
+        text_color_disabled="#000000"      # Texto negro para que contraste bien
     )
-    btn_empezar.pack(pady=10)
+    # Aumentamos el espacio de arriba (pady) para alejarlo por completo de la zona de VLC
+    btn_empezar.pack(pady=(30, 20))
+
     
     # 5. Botón de Regresar
     def cerrar_ventana():
@@ -252,7 +260,8 @@ btn_cosas = ctk.CTkButton(
     border_color="#000000",     
     hover_color="#9d2323",
     fg_color="#e10d0d",
-    corner_radius=20 
+    corner_radius=20,
+    command=lambda:abrir_ventana_cosas(ventana)
 )
 btn_cosas.pack(side="left", padx=40)
 
